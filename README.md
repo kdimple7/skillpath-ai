@@ -65,4 +65,3 @@ backend/main.py     FastAPI development API and deterministic assessment logic
 backend/schema.sql  PostgreSQL relational schema
 backend/requirements.txt
 ```
-

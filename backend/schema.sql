@@ -1,0 +1,15 @@
+-- PostgreSQL production-oriented core schema. The local demo API uses SQLAlchemy create_all.
+CREATE TABLE users (id UUID PRIMARY KEY, auth_subject TEXT UNIQUE NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE user_profiles (user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, career_path TEXT NOT NULL, skill TEXT NOT NULL, level TEXT NOT NULL, preferences JSONB NOT NULL DEFAULT '{}', updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE topics (id BIGSERIAL PRIMARY KEY, skill TEXT NOT NULL, name TEXT NOT NULL, UNIQUE(skill,name));
+CREATE TABLE questions (id TEXT PRIMARY KEY, topic_id BIGINT REFERENCES topics(id), subtopic TEXT NOT NULL, difficulty SMALLINT NOT NULL CHECK (difficulty BETWEEN 1 AND 3), question_type TEXT NOT NULL, prompt JSONB NOT NULL, answer_key JSONB NOT NULL, explanation TEXT NOT NULL, estimated_seconds SMALLINT NOT NULL);
+CREATE TABLE assessments (id UUID PRIMARY KEY, user_id UUID NOT NULL REFERENCES users(id), status TEXT NOT NULL, started_at TIMESTAMPTZ NOT NULL DEFAULT now(), completed_at TIMESTAMPTZ);
+CREATE TABLE assessment_questions (assessment_id UUID REFERENCES assessments(id) ON DELETE CASCADE, question_id TEXT REFERENCES questions(id), position SMALLINT NOT NULL, difficulty SMALLINT NOT NULL, PRIMARY KEY(assessment_id,question_id));
+CREATE TABLE assessment_answers (assessment_id UUID, question_id TEXT, user_answer JSONB, is_correct BOOLEAN, skipped BOOLEAN NOT NULL DEFAULT false, answered_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY(assessment_id,question_id), FOREIGN KEY(assessment_id,question_id) REFERENCES assessment_questions(assessment_id,question_id));
+CREATE TABLE coding_challenges (id TEXT PRIMARY KEY, skill TEXT NOT NULL, prompt JSONB NOT NULL, rubric JSONB NOT NULL);
+CREATE TABLE coding_submissions (id UUID PRIMARY KEY, user_id UUID NOT NULL REFERENCES users(id), challenge_id TEXT NOT NULL REFERENCES coding_challenges(id), status TEXT NOT NULL, score SMALLINT, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE skill_scores (assessment_id UUID REFERENCES assessments(id), topic_id BIGINT REFERENCES topics(id), correct_count SMALLINT NOT NULL, item_count SMALLINT NOT NULL, score NUMERIC(5,2), PRIMARY KEY(assessment_id,topic_id));
+CREATE TABLE learning_roadmaps (id UUID PRIMARY KEY, user_id UUID NOT NULL REFERENCES users(id), career_path TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE roadmap_milestones (id TEXT PRIMARY KEY, roadmap_id UUID NOT NULL REFERENCES learning_roadmaps(id) ON DELETE CASCADE, title TEXT NOT NULL, phase TEXT NOT NULL, prerequisites JSONB NOT NULL DEFAULT '[]', resources JSONB NOT NULL DEFAULT '[]', position SMALLINT NOT NULL);
+CREATE TABLE user_progress (user_id UUID REFERENCES users(id), milestone_id TEXT REFERENCES roadmap_milestones(id), completed_at TIMESTAMPTZ, PRIMARY KEY(user_id,milestone_id));
+-- Enable row-level security in production and bind policies to verified auth claims.
